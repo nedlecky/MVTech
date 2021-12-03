@@ -1,0 +1,553 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="20.11.1.2">
+<procedure name="main">
+<interface/>
+<body>
+<c as_id="image_acquisition" as_name="Image Acquisition 01" as_grp="[1,1]" as_ord="1">* Vision Skills necessary for the IAC reference programs</c>
+<c>* IAC008 PinCount</c>
+<c>* IAC009 PickFromTable</c>
+<c>* IAC011 ReadID</c>
+<c>* IAC012 FindPart (in progress)</c>
+<c></c>
+<l>WindowHandle1 := 99</l>
+<l>Message_idx := 0</l>
+<l>Continue := true</l>
+<l>while (Continue == true)</l>
+<c>    * Open up a framegrabber to get the desired image from the correct camera</c>
+<l>    open_framegrabber ('USB3Vision', 0, 0, 0, 0, 0, 0, 'progressive', -1, 'default', -1, 'false', 'default', '2676014F7F1B_Basler_acA460010uc', 0, -1, AcqHandle)</l>
+<l>    set_framegrabber_param (AcqHandle, 'OffsetY', 0)</l>
+<l>    set_framegrabber_param (AcqHandle, 'CenterX', 0)</l>
+<l>    set_framegrabber_param (AcqHandle, 'PixelFormat', 'Mono8')</l>
+<l>    set_framegrabber_param (AcqHandle, 'BlackLevel', 0.0)</l>
+<l>    get_framegrabber_param(AcqHandle,'image_width',image_width)</l>
+<l>    get_framegrabber_param(AcqHandle,'image_height',image_height)</l>
+<c>    </c>
+<l>    if (WindowHandle1 == 99)</l>
+<l>        dev_open_window (50, 1200, 1144, 818, 'black', WindowHandle1)</l>
+<l>        set_display_font (WindowHandle1, 16, 'mono', 'true', 'false')</l>
+<l>    endif</l>
+<c> </c>
+<c>    * Test Routines</c>
+<l>    while (false)</l>
+<l>        grab_image (Image, AcqHandle)            </l>
+<l>        dev_clear_window ()</l>
+<l>        disp_image(Image,WindowHandle1)</l>
+<c></c>
+<l>        CountPins (Image, SelectedRegions, row1, column1, row2, column2)</l>
+<c>        *draw_rectangle1(WindowHandle1, 100.0, 100.0, 300.0, 300.0)</c>
+<l>        *draw_rectangle1(WindowHandle1, row1, column1, row2, column2)</l>
+<c></c>
+<c>        * Assemble and return response</c>
+<l>        count_obj(SelectedRegions, nPins)</l>
+<l>        Response := 'nPins = ' + nPins</l>
+<l>        disp_message (WindowHandle1, 'Response: ' + Response, 'window', 26, 12, 'green', 'false')</l>
+<l>    endwhile</l>
+<c>    </c>
+<c>    * Open a socket that accepts connection requests</c>
+<l>    dev_clear_window ()</l>
+<l>    caption := 'Waiting for client connection image=(' + image_width + ', ' + image_height + ')'</l>
+<l>    disp_message (WindowHandle1, caption, 'window', 12, 12, 'black', 'true')</l>
+<l>    open_socket_accept (3000, 'protocol', 'TCP4', AcceptingSocket)</l>
+<c></c>
+<c>    * Wait for an incoming connection</c>
+<l>    OpenStatus := 5</l>
+<l>    while (OpenStatus[0] != 2)</l>
+<l>        OpenStatus := 2</l>
+<l>        try</l>
+<l>            socket_accept_connect (AcceptingSocket, 'false', Socket)</l>
+<l>        catch (OpenStatus)</l>
+<l>        endtry</l>
+<l>        wait_seconds (0.2)</l>
+<l>    endwhile</l>
+<l>    dev_clear_window ()</l>
+<l>    disp_message (WindowHandle1, 'Connected!', 'window', 12, 12, 'green', 'false')</l>
+<c>    </c>
+<c>    * Setup for intrinsic cal</c>
+<l>    I := 1</l>
+<c>    </c>
+<l>    while (OpenStatus[0] == 2)</l>
+<l>        try</l>
+<c>            * Wait for a command from the controller</c>
+<l>            receive_data (Socket, 'z', Command, From)</l>
+<l>            Message_idx := Message_idx + 1</l>
+<c>            * Grab image and display Command in it</c>
+<l>            grab_image (Image, AcqHandle)            </l>
+<l>            dev_clear_window ()</l>
+<l>            disp_image(Image,WindowHandle1)</l>
+<l>            disp_message (WindowHandle1, 'Command: ' + Command, 'window', 12, 12, 'green', 'false')</l>
+<c>            </c>
+<c>            * Interpret command as list of comma-delimited numbers possibly followed by \n</c>
+<c>            * Eliminate any \n</c>
+<l>            tuple_regexp_replace(Command,'\n','',command_clean)</l>
+<c>            * Comma split into strings</c>
+<l>            tuple_split(command_clean,',',command_strings)</l>
+<c>            *Convert strings to numbers</c>
+<l>            tuple_number(command_strings,command_num_params)</l>
+<c>            </c>
+<c>            * Command selection is performed by the first number!</c>
+<l>            switch(command_num_params[0])</l>
+<c>                </c>
+<c>            * Acquire only (which was done above)</c>
+<l>            case 0:</l>
+<l>                Response:='(' + Message_idx + ', 1)'</l>
+<l>                send_data(Socket,'z',Response, [])</l>
+<l>                disp_message (WindowHandle1, 'Response: ' + Response, 'window', 26, 12, 'green', 'false')</l>
+<l>                break</l>
+<c></c>
+<l>            case 2:</l>
+<c>            * Use blob to count pins- very crude check </c>
+<l>                CountPins (Image, SelectedRegions, row1, column1, row2, column2)</l>
+<l>                *draw_rectangle1(WindowHandle1, row1, column1, row2, column2)</l>
+<c></c>
+<c>                * Assemble and return response</c>
+<l>                count_obj(SelectedRegions, nPins)</l>
+<l>                Response := '(' + Message_idx + ', ' + nPins + ')'</l>
+<l>                send_data(Socket,'z',Response, [])</l>
+<l>                disp_message (WindowHandle1, 'Response: ' + Response, 'window', 26, 12, 'green', 'false')</l>
+<l>                break</l>
+<c>                </c>
+<l>            case 5:</l>
+<c>            * Read all barcodes in current image</c>
+<l>                ReadBarcodes (Image, totalBarcodeCount, Barcodes)</l>
+<c></c>
+<l>                Response:='(' + Message_idx + ', ' + totalBarcodeCount + ')'</l>
+<l>                send_data(Socket,'z',Response, [])</l>
+<l>                disp_message (WindowHandle1, 'Response: ' + Response, 'window', 26, 12, 'green', 'false')</l>
+<c></c>
+<l>                send_data(Socket,'z',Barcodes, [])</l>
+<l>                disp_message (WindowHandle1, 'Barcodes: ' + Barcodes, 'window', 40, 12, 'green', 'false')</l>
+<l>                *set_system ('flush_graphic', 'true')</l>
+<l>                break</l>
+<c>                </c>
+<l>            case 10:</l>
+<c>            * Start Intrinsic Calibration</c>
+<c>            * Assuming pixel size of 1.4u as in Basler acA4600-10</c>
+<l>                gen_caltab (7, 7, .004, 0.5, 'iac_caltab.descr', 'iac_caltab.ps')</l>
+<l>                gen_cam_par_area_scan_division (0.008, 0, 0.0000014, 0.0000014, image_width/2, image_height/2, image_width, image_height, StartCamPar)</l>
+<l>                create_calib_data ('calibration_object', 1, 1, CalibDataID)</l>
+<l>                set_calib_data_cam_param (CalibDataID, 0, [], StartCamPar)</l>
+<l>                set_calib_data_calib_object (CalibDataID, 0, 'iac_caltab.descr')</l>
+<l>                I := 1</l>
+<l>                Response:='(' + Message_idx + ', 10)'</l>
+<l>                send_data(Socket,'z',Response, [])</l>
+<l>                disp_message (WindowHandle1, 'Response: ' + Response, 'window', 26, 12, 'green', 'false')</l>
+<l>                break</l>
+<c></c>
+<l>            case 11:</l>
+<c>                * Add Intrinsic calibration image</c>
+<l>                Response_code := 11</l>
+<l>                try</l>
+<l>                    find_calib_object (Image, CalibDataID, 0, 0, I, [], [])</l>
+<l>                    get_calib_data_observ_contours (Caltab, CalibDataID, 'caltab', 0, 0, I)</l>
+<l>                    dev_set_color ('green')</l>
+<l>                    dev_display (Caltab)</l>
+<l>                    I := I + 1</l>
+<l>                catch (Exception)</l>
+<l>                    Response_code := 1100</l>
+<l>                endtry</l>
+<l>                Response:='(' + Message_idx + ',' + Response_code + ')'</l>
+<l>                send_data(Socket,'z',Response, [])</l>
+<l>                disp_message (WindowHandle1, 'Response: ' + Response, 'window', 26, 12, 'green', 'false')</l>
+<l>                break</l>
+<c></c>
+<l>            case 12:</l>
+<c>            * Complete Intrinsic calibration</c>
+<l>                try</l>
+<l>                    calibrate_cameras (CalibDataID, Error)</l>
+<l>                    get_calib_data (CalibDataID, 'camera', 0, 'params', CamParam)</l>
+<c>                    * Write the internal camera parameters to a file</c>
+<l>                    write_cam_par (CamParam, 'iac_intrinsic_camera_parameters.dat')</l>
+<l>                    Message := 'Interior camera parameters have'</l>
+<l>                    Message[1] := 'been written to file'</l>
+<l>                    disp_message (WindowHandle1, Message, 'window', 54, 12, 'green', 'false')</l>
+<l>                    clear_calib_data (CalibDataID)</l>
+<l>                    Response:='(' + Message_idx + ', 12)'</l>
+<l>                catch (Exception)</l>
+<l>                    Response:='(' + Message_idx + ', 9912)'</l>
+<l>                endtry</l>
+<l>                send_data(Socket,'z',Response, [])</l>
+<l>                disp_message (WindowHandle1, 'Response: ' + Response, 'window', 26, 12, 'green', 'false')</l>
+<l>                break</l>
+<c></c>
+<l>            case 15:</l>
+<c>            * Shoot target and determine extrinsic calibration</c>
+<l>                try</l>
+<l>                    read_cam_par ('iac_intrinsic_camera_parameters.dat', CamParam)</l>
+<l>                catch (Exception)</l>
+<l>                    Response:='(' + Message_idx + ', 9915)'</l>
+<l>                    send_data(Socket,'z',Response, [])</l>
+<l>                    disp_message (WindowHandle1, 'Response: ' + Response, 'window', 26, 12, 'red', 'false')</l>
+<l>                    break</l>
+<l>                endtry</l>
+<c>                * </c>
+<c>                * Determine the external camera parameters and world coodinates from image points</c>
+<c>                * </c>
+<c>                * The external camera parameters can be determined from an image, where the</c>
+<c>                * calibration plate is positioned directly on the measurement plane</c>
+<l>                CaltabName := 'iac_caltab.descr'</l>
+<l>                create_calib_data ('calibration_object', 1, 1, CalibDataID)</l>
+<c>                * Here, the final camera parameters are already known and can be used instead</c>
+<c>                * of the starting values used in the program 'camera_calibration_internal.hdev'</c>
+<l>                set_calib_data_cam_param (CalibDataID, 0, [], CamParam)</l>
+<l>                set_calib_data_calib_object (CalibDataID, 0, CaltabName)</l>
+<l>                find_calib_object (Image, CalibDataID, 0, 0, 1, [], [])</l>
+<l>                get_calib_data_observ_contours (Caltab, CalibDataID, 'caltab', 0, 0, 1)</l>
+<l>                get_calib_data_observ_points (CalibDataID, 0, 0, 1, RCoord, CCoord, Index, PoseForCalibrationPlate)</l>
+<l>                dev_set_color ('green')</l>
+<l>                dev_display (Caltab)</l>
+<l>                dev_set_color ('red')</l>
+<l>                disp_caltab (WindowHandle1, CaltabName, CamParam, PoseForCalibrationPlate, 1)</l>
+<l>                dev_set_line_width (3)</l>
+<l>                disp_circle (WindowHandle1, RCoord, CCoord, gen_tuple_const(|RCoord|,1.5))</l>
+<c>                * To take the thickness of the calibration plate into account, the z-value</c>
+<c>                * of the origin given by the camera pose has to be translated by the</c>
+<c>                * thickness of the calibration plate.</c>
+<c>                * Deactivate the following line if you do not want to add the correction.</c>
+<l>                set_origin_pose (PoseForCalibrationPlate, 0, 0, 0.00075, PoseForCalibrationPlate)</l>
+<l>                write_calib_data(CalibDataID,'iac_extrinsic_cal.dat')</l>
+<c></c>
+<l>                Response:='(' + Message_idx + ', 15)'</l>
+<l>                send_data(Socket,'z',Response, [])</l>
+<l>                disp_message (WindowHandle1, 'Response: ' + Response, 'window', 26, 12, 'green', 'false')</l>
+<l>                break</l>
+<c>                </c>
+<l>            case 20:</l>
+<c>            * Load model Nut Matching</c>
+<l>                set_system ('border_shape_models', 'false')</l>
+<c></c>
+<l>                read_shape_model ('C:/Users/nedlecky/source/halcon/Nut Matching.shm', ModelID)</l>
+<l>                get_shape_model_contours (ModelContours, ModelID, 1)</l>
+<c></c>
+<l>                smallest_rectangle1_xld (ModelContours, Row1, Column1, Row2, Column2)</l>
+<l>                RefRow := (max(Row2)-min(Row1))/2</l>
+<l>                RefColumn := (max(Column2)-min(Column1))/2</l>
+<l>                vector_angle_to_rigid (0, 0, 0, RefRow, RefColumn, 0, HomMat2D)</l>
+<l>                affine_trans_contour_xld (ModelContours, TransContours, HomMat2D)</l>
+<c></c>
+<l>                dev_set_color ('green')</l>
+<l>                dev_set_draw ('margin')</l>
+<l>                dev_display (TransContours)</l>
+<c></c>
+<l>                Response:='(' + Message_idx + ', 20)'</l>
+<l>                send_data(Socket,'z',Response, [])</l>
+<l>                disp_message (WindowHandle1, 'Response: ' + Response, 'window', 26, 12, 'green', 'false')</l>
+<l>                break</l>
+<c>                </c>
+<l>            case 21:</l>
+<c>            * Matching Find currently loaded model</c>
+<l>                disp_caltab (WindowHandle1, CaltabName, CamParam, PoseForCalibrationPlate, 1)</l>
+<l>                dev_set_line_width (3)</l>
+<l>                disp_circle (WindowHandle1, RCoord, CCoord, gen_tuple_const(|RCoord|,1.5))</l>
+<c></c>
+<l>                find_shape_model (Image, ModelID, rad(0), rad(360), 0.5, 1, 0.5, 'least_squares', [5,1], 0.8, Row, Column, Angle, Score)</l>
+<c></c>
+<c>                * Transform the model contours into the detected positions</c>
+<l>                FoundRow := 0 </l>
+<l>                FoundColumn := 0</l>
+<l>                FoundAngle := 0</l>
+<l>                FoundX := 999</l>
+<l>                FoundY := 0</l>
+<l>                if (|Score|==1)</l>
+<l>                    FoundRow := Row[0]</l>
+<l>                    FoundColumn := Column[0]</l>
+<l>                    FoundAngle := Angle[0]</l>
+<l>                    hom_mat2d_identity (HomMat2D)</l>
+<l>                    hom_mat2d_rotate (HomMat2D, FoundAngle, 0, 0, HomMat2D)</l>
+<l>                    hom_mat2d_translate (HomMat2D, FoundRow, FoundColumn, HomMat2D)</l>
+<l>                    affine_trans_contour_xld (ModelContours, TransContours, HomMat2D)</l>
+<l>                    dev_set_color ('green')</l>
+<l>                    dev_display (TransContours)</l>
+<c>                    * Convert camera pixel coordinates into real-world extrinsic coordinates</c>
+<l>                    image_points_to_world_plane (CamParam, PoseForCalibrationPlate, FoundRow, FoundColumn, 1, FoundX, FoundY)</l>
+<l>                endif</l>
+<c></c>
+<l>                Response:='(' + Message_idx + ', ' + FoundX +', ' + FoundY + ', ' + FoundAngle + ')'</l>
+<l>                send_data(Socket,'z',Response, [])</l>
+<l>                disp_message (WindowHandle1, 'Response: ' + Response, 'window', 26, 12, 'green', 'false')</l>
+<l>                break</l>
+<c>                </c>
+<l>            default:</l>
+<l>                Response:='(' + Message_idx + ', ' + (command_num_params[0]+9900) + ')'</l>
+<l>                send_data(Socket,'z',Response, [])</l>
+<l>                disp_message (WindowHandle1, 'Bad Command Response: ' + Response, 'window', 26, 12, 'green', 'false')</l>
+<l>                break</l>
+<c>                </c>
+<l>            endswitch</l>
+<c>           </c>
+<l>        catch (Command)</l>
+<l>            OpenStatus[0] := 0</l>
+<l>        endtry</l>
+<l>    endwhile</l>
+<c>    </c>
+<c>    * Close up socket and grabber</c>
+<l>    close_socket (Socket)</l>
+<l>    close_socket (AcceptingSocket)</l>
+<l>    close_framegrabber (AcqHandle)</l>
+<l>endwhile</l>
+<l>dev_close_window()</l>
+<c></c>
+<c></c>
+<c></c>
+<c as_id="matching" as_name="Matching 01" as_grp="[12]" as_ord="4"></c>
+<c></c>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+<procedure name="find_coin">
+<interface>
+<io>
+<par name="Image" base_type="iconic" dimension="0"/>
+</io>
+<ic>
+<par name="Models" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="Row" base_type="ctrl" dimension="0"/>
+<par name="Column" base_type="ctrl" dimension="0"/>
+<par name="Angle" base_type="ctrl" dimension="0"/>
+<par name="Score" base_type="ctrl" dimension="0"/>
+<par name="Model" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>threshold (Image, Region, 70, 255)</l>
+<l>connection (Region, ConnectedRegions)</l>
+<l>select_shape_std (ConnectedRegions, SelectedRegions, 'max_area', 0)</l>
+<l>shape_trans (SelectedRegions, RegionTrans, 'convex')</l>
+<l>area_center (RegionTrans, Area, Row, Column)</l>
+<l>gen_circle (Coin, Row, Column, 120)</l>
+<l>area_center (Coin, Area, Row, Column)</l>
+<l>gen_circle (Circle, Row, Column, 35)</l>
+<l>reduce_domain (Image, Circle, ImageReduced)</l>
+<l>find_shape_models (ImageReduced, Models, 0, rad(360), 0.6, 1, 0, 'interpolation', 0, 0.9, Row, Column, Angle, Score, Model)</l>
+<l>return ()</l>
+</body>
+<docu id="find_coin">
+<parameters>
+<parameter id="Angle"/>
+<parameter id="Column"/>
+<parameter id="Image"/>
+<parameter id="Model"/>
+<parameter id="Models"/>
+<parameter id="Row"/>
+<parameter id="Score"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="CountPins">
+<interface>
+<io>
+<par name="Image" base_type="iconic" dimension="0"/>
+</io>
+<oo>
+<par name="SelectedRegions" base_type="iconic" dimension="0"/>
+</oo>
+<oc>
+<par name="row1" base_type="ctrl" dimension="0"/>
+<par name="column1" base_type="ctrl" dimension="0"/>
+<par name="row2" base_type="ctrl" dimension="0"/>
+<par name="column2" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<c>* CountPins</c>
+<c>* Uses tuned connection (blob) algoprithm</c>
+<c></c>
+<c>* Make an ROI which is a centered 80% of the image</c>
+<l>get_image_size(Image,img_width,img_height)</l>
+<l>roi_width := floor(img_width * 0.8)</l>
+<l>roi_height := floor(img_height * 0.8)</l>
+<l>row1 := floor((img_height - roi_height)/2)</l>
+<l>column1 := floor((img_width - roi_width) / 2)</l>
+<l>row2 := row1 + roi_height-1</l>
+<l>column2 := column1 + roi_width-1</l>
+<l>gen_rectangle1 (Rectangle, row1, column1, row2, column2)</l>
+<c></c>
+<c>* Show the ROI</c>
+<l>dev_set_draw('margin')</l>
+<l>dev_display(Rectangle)</l>
+<c></c>
+<c>* Now threshold and connect in the ROI</c>
+<l>reduce_domain (Image, Rectangle, ImageReduced)</l>
+<l>threshold (ImageReduced, Bright, 80, 255)</l>
+<l>connection (Bright, ConnectedRegions)</l>
+<c></c>
+<c>* Select only those blobs that qualify as pins: 120&lt;area&lt;1000, 5,5&lt;width,height&lt;40,20</c>
+<l>select_shape (ConnectedRegions, SelectedRegions, ['area', 'width', 'height'], 'and', [120, 5, 5], [1000, 40, 20])</l>
+<l>dev_set_draw ('fill')</l>
+<l>dev_set_color ('green')</l>
+<l>dev_display (SelectedRegions)</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="CountPins">
+<parameters>
+<parameter id="Image"/>
+<parameter id="SelectedRegions"/>
+<parameter id="column1"/>
+<parameter id="column2"/>
+<parameter id="row1"/>
+<parameter id="row2"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="ReadAllBarcodes">
+<interface>
+<io>
+<par name="Image" base_type="iconic" dimension="0"/>
+</io>
+<oo>
+<par name="SymbolRegions128" base_type="iconic" dimension="0"/>
+<par name="SymbolRegionsDm" base_type="iconic" dimension="0"/>
+<par name="SymbolRegionsQr" base_type="iconic" dimension="0"/>
+</oo>
+<ic>
+<par name="BarCodeHandle" base_type="ctrl" dimension="0"/>
+<par name="DMCodeHandle" base_type="ctrl" dimension="0"/>
+<par name="QRCodeHandle" base_type="ctrl" dimension="0"/>
+<par name="Message_idx" base_type="ctrl" dimension="0"/>
+<par name="Socket" base_type="ctrl" dimension="0"/>
+<par name="WindowHandle1" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="Code128DecodedStrings" base_type="ctrl" dimension="0"/>
+<par name="ResultHandles" base_type="ctrl" dimension="0"/>
+<par name="DmDecodedStrings" base_type="ctrl" dimension="0"/>
+<par name="QrDecodedStrings" base_type="ctrl" dimension="0"/>
+<par name="n1dBarcodes" base_type="ctrl" dimension="0"/>
+<par name="nDmCodes" base_type="ctrl" dimension="0"/>
+<par name="nQrCodes" base_type="ctrl" dimension="0"/>
+<par name="totalBarcodeCount" base_type="ctrl" dimension="0"/>
+<par name="Response" base_type="ctrl" dimension="0"/>
+<par name="Barcodes" base_type="ctrl" dimension="0"/>
+<par name="Index" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>                find_bar_code (Image, SymbolRegions128, BarCodeHandle, 'Code 128', Code128DecodedStrings)</l>
+<l>                find_data_code_2d (Image, SymbolRegionsDm, DMCodeHandle, [], [], ResultHandles, DmDecodedStrings)</l>
+<l>                find_data_code_2d (Image, SymbolRegionsQr, QRCodeHandle, [], [], ResultHandles, QrDecodedStrings)</l>
+<c>    </c>
+<l>                *dev_display (Image)</l>
+<l>                set_system ('flush_graphic', 'false')</l>
+<l>                dev_set_draw('margin')</l>
+<l>                dev_display (SymbolRegions128)</l>
+<l>                dev_display (SymbolRegionsDm)</l>
+<l>                dev_display (SymbolRegionsQr)</l>
+<c>    </c>
+<c>                * Assemble and return response: (incrementing index field, total number 1D and 2D codes found)</c>
+<l>                tuple_length(Code128DecodedStrings, n1dBarcodes)</l>
+<l>                tuple_length(DmDecodedStrings, nDmCodes)</l>
+<l>                tuple_length(QrDecodedStrings, nQrCodes)</l>
+<l>                totalBarcodeCount := n1dBarcodes+nDmCodes+nQrCodes</l>
+<c>                </c>
+<c>                * Concatenate and send barcodes</c>
+<l>                if(totalBarcodeCount&lt;1)</l>
+<l>                    Barcodes:='NOREAD'</l>
+<l>                else</l>
+<l>                    Barcodes := ''</l>
+<l>                    for Index := 0 to n1dBarcodes-1 by 1</l>
+<l>                        Barcodes := Barcodes + Code128DecodedStrings[Index] + '|'</l>
+<l>                    endfor</l>
+<l>                    for Index := 0 to nDmCodes-1 by 1</l>
+<l>                        Barcodes := Barcodes + DmDecodedStrings[Index] + '|'</l>
+<l>                    endfor</l>
+<l>                    for Index := 0 to nQrCodes-1 by 1</l>
+<l>                        Barcodes := Barcodes + QrDecodedStrings[Index] + '|'</l>
+<l>                    endfor</l>
+<c>                    * Get rid of ugly trailing '|'</c>
+<l>                    Barcodes := Barcodes{0:strlen(Barcodes)-2}</l>
+<l>                endif</l>
+<l>return ()</l>
+</body>
+<docu id="ReadAllBarcodes">
+<parameters>
+<parameter id="BarCodeHandle"/>
+<parameter id="Barcodes"/>
+<parameter id="Code128DecodedStrings"/>
+<parameter id="DMCodeHandle"/>
+<parameter id="DmDecodedStrings"/>
+<parameter id="Image"/>
+<parameter id="Index"/>
+<parameter id="Message_idx"/>
+<parameter id="QRCodeHandle"/>
+<parameter id="QrDecodedStrings"/>
+<parameter id="Response"/>
+<parameter id="ResultHandles"/>
+<parameter id="Socket"/>
+<parameter id="SymbolRegions128"/>
+<parameter id="SymbolRegionsDm"/>
+<parameter id="SymbolRegionsQr"/>
+<parameter id="WindowHandle1"/>
+<parameter id="n1dBarcodes"/>
+<parameter id="nDmCodes"/>
+<parameter id="nQrCodes"/>
+<parameter id="totalBarcodeCount"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="ReadBarcodes">
+<interface>
+<io>
+<par name="Image" base_type="iconic" dimension="0"/>
+</io>
+<oc>
+<par name="totalBarcodeCount" base_type="ctrl" dimension="0"/>
+<par name="Barcodes" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<c>* ReadBarcodes</c>
+<c></c>
+<c>* Setup for barcode finding (could just do this once...)</c>
+<l>create_bar_code_model ([], [], BarCodeHandle)</l>
+<l>create_data_code_2d_model ('Data Matrix ECC 200', [], [], DMCodeHandle)</l>
+<l>create_data_code_2d_model ('QR Code', [], [], QRCodeHandle)</l>
+<c></c>
+<c>* Find all three types of barcodes</c>
+<l>dev_set_draw('margin')</l>
+<l>find_bar_code (Image, SymbolRegions128, BarCodeHandle, 'Code 128', Code128DecodedStrings)</l>
+<l>find_data_code_2d (Image, SymbolRegionsDm, DMCodeHandle, [], [], ResultHandles, DmDecodedStrings)</l>
+<l>find_data_code_2d (Image, SymbolRegionsQr, QRCodeHandle, [], [], ResultHandles, QrDecodedStrings)</l>
+<c></c>
+<c>* Put boxes around all the barcodes found</c>
+<l>dev_display (SymbolRegions128)</l>
+<l>dev_display (SymbolRegionsDm)</l>
+<l>dev_display (SymbolRegionsQr)</l>
+<c></c>
+<c>* Calculate total number of barcodes found</c>
+<l>tuple_length(Code128DecodedStrings, n1dBarcodes)</l>
+<l>tuple_length(DmDecodedStrings, nDmCodes)</l>
+<l>tuple_length(QrDecodedStrings, nQrCodes)</l>
+<l>totalBarcodeCount := n1dBarcodes+nDmCodes+nQrCodes</l>
+<c></c>
+<c>* Concatenate all into pipe-delimited string</c>
+<l>if(totalBarcodeCount&lt;1)</l>
+<l>    Barcodes:='NOREAD'</l>
+<l>else</l>
+<l>    Barcodes := ''</l>
+<l>    for Index := 0 to n1dBarcodes-1 by 1</l>
+<l>        Barcodes := Barcodes + Code128DecodedStrings[Index] + '|'</l>
+<l>    endfor</l>
+<l>    for Index := 0 to nDmCodes-1 by 1</l>
+<l>        Barcodes := Barcodes + DmDecodedStrings[Index] + '|'</l>
+<l>    endfor</l>
+<l>    for Index := 0 to nQrCodes-1 by 1</l>
+<l>        Barcodes := Barcodes + QrDecodedStrings[Index] + '|'</l>
+<l>    endfor</l>
+<c>    * Get rid of ugly trailing '|'</c>
+<l>    Barcodes := Barcodes{0:strlen(Barcodes)-2}</l>
+<l>endif</l>
+<l>return ()</l>
+</body>
+<docu id="ReadBarcodes">
+<parameters>
+<parameter id="Barcodes"/>
+<parameter id="Image"/>
+<parameter id="totalBarcodeCount"/>
+</parameters>
+</docu>
+</procedure>
+</hdevelop>

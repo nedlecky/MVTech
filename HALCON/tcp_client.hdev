@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="18.11.3.0">
+<procedure name="main">
+<interface/>
+<body>
+<l>dev_update_off ()</l>
+<l>dev_open_window (0, 0, 640, 480, 'black', WindowHandle1)</l>
+<l>set_display_font (WindowHandle1, 16, 'mono', 'true', 'false')</l>
+<c></c>
+<l>Message_idx := 0</l>
+<l>Continue := true</l>
+<l>while (Continue == true)</l>
+<c>    * Open a socket that accepts connection requests</c>
+<l>    dev_clear_window ()</l>
+<l>    disp_message (WindowHandle1, 'Waiting for client connection', 'window', 12, 12, 'black', 'true')</l>
+<l>    open_socket_accept (3000, 'protocol', 'TCP4', AcceptingSocket)</l>
+<c></c>
+<c>    * Wait for an incoming connection</c>
+<l>    OpenStatus := 5</l>
+<l>    while (OpenStatus[0] != 2)</l>
+<l>        OpenStatus := 2</l>
+<l>        try</l>
+<l>            socket_accept_connect (AcceptingSocket, 'false', Socket)</l>
+<l>        catch (OpenStatus)</l>
+<l>        endtry</l>
+<l>        wait_seconds (0.2)</l>
+<l>    endwhile</l>
+<l>    dev_clear_window ()</l>
+<l>    disp_message (WindowHandle1, 'Connected!', 'window', 12, 12, 'green', 'false')</l>
+<c>    </c>
+<l>    while (OpenStatus[0] == 2)</l>
+<l>        try</l>
+<l>            receive_data (Socket, 'z', Command, From)</l>
+<l>            dev_set_window (WindowHandle1)</l>
+<l>            dev_clear_window ()</l>
+<l>            disp_message (WindowHandle1, 'Command: ' + Command, 'window', 12, 12, 'green', 'false')</l>
+<c>            </c>
+<c>            * Perform vision measurement... Set result in Response</c>
+<l>            Message_idx := Message_idx + 1</l>
+<l>            Response:='(' + Message_idx + ', 0.005, 0.004, 0.001, 100.0)'</l>
+<c>            </c>
+<l>            send_data(Socket,'z',Response, [])</l>
+<l>            disp_message (WindowHandle1, 'Response: ' + Response, 'window', 26, 12, 'green', 'false')</l>
+<l>        catch (Command)</l>
+<l>            OpenStatus[0] := 0</l>
+<l>        endtry</l>
+<l>    endwhile</l>
+<c>    </c>
+<c>    * Close socket</c>
+<l>    close_socket (Socket)</l>
+<l>    close_socket (AcceptingSocket)</l>
+<l>endwhile</l>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+<procedure name="find_coin">
+<interface>
+<io>
+<par name="Image" base_type="iconic" dimension="0"/>
+</io>
+<ic>
+<par name="Models" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="Row" base_type="ctrl" dimension="0"/>
+<par name="Column" base_type="ctrl" dimension="0"/>
+<par name="Angle" base_type="ctrl" dimension="0"/>
+<par name="Score" base_type="ctrl" dimension="0"/>
+<par name="Model" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>threshold (Image, Region, 70, 255)</l>
+<l>connection (Region, ConnectedRegions)</l>
+<l>select_shape_std (ConnectedRegions, SelectedRegions, 'max_area', 0)</l>
+<l>shape_trans (SelectedRegions, RegionTrans, 'convex')</l>
+<l>area_center (RegionTrans, Area, Row, Column)</l>
+<l>gen_circle (Coin, Row, Column, 120)</l>
+<l>area_center (Coin, Area, Row, Column)</l>
+<l>gen_circle (Circle, Row, Column, 35)</l>
+<l>reduce_domain (Image, Circle, ImageReduced)</l>
+<l>find_shape_models (ImageReduced, Models, 0, rad(360), 0.6, 1, 0, 'interpolation', 0, 0.9, Row, Column, Angle, Score, Model)</l>
+<l>return ()</l>
+</body>
+<docu id="find_coin">
+<parameters>
+<parameter id="Angle"/>
+<parameter id="Column"/>
+<parameter id="Image"/>
+<parameter id="Model"/>
+<parameter id="Models"/>
+<parameter id="Row"/>
+<parameter id="Score"/>
+</parameters>
+</docu>
+</procedure>
+</hdevelop>

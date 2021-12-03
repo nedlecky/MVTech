@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="20.11.1.2">
+<procedure name="main">
+<interface/>
+<body>
+<l>command := '1,13.7\n'</l>
+<l>tuple_regexp_replace(command,'\n','',command_clean)</l>
+<l>tuple_split(command_clean,',',command_strings)</l>
+<l>tuple_number(command_strings,command_num_params)</l>
+<c></c>
+<l>i := command_num_params[0]</l>
+<l>j := command_num_params[1]</l>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+</hdevelop>
