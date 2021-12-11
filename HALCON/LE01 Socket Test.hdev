@@ -31,16 +31,26 @@
 <l>    while (OpenStatus[0] == 2)</l>
 <l>        try</l>
 <l>            receive_data (Socket, 'z', Command, From)</l>
-<l>            dev_set_window (WindowHandle1)</l>
-<l>            dev_clear_window ()</l>
-<l>            disp_message (WindowHandle1, 'Command: ' + Command, 'window', 12, 12, 'green', 'false')</l>
 <c>            </c>
-<c>            * Perform vision measurement... Set result in Response</c>
-<l>            Message_idx := Message_idx + 1</l>
-<l>            Response:='halcon_index=' + Message_idx + '#{crawl("Crawl from HALCON");}' + '#halcon_command=' + Command{0:strlen(Command)-3}  + '#{print("Hi from HALCON");}'</l>
+<c>            * If multiple (\n delimited) commands come in piled up we execute in sequence</c>
+<l>            tuple_split(Command,'\n',commandLines)</l>
+<l>            tuple_length(commandLines,nCommands)</l>
+<l>            for Index := 0 to nCommands-1 by 1</l>
+<l>                dev_set_window (WindowHandle1)</l>
+<l>                dev_clear_window ()</l>
+<c>                </c>
+<l>                thisCommand := commandLines[Index]</l>
+<l>                disp_message (WindowHandle1, 'Command: ' + thisCommand, 'window', 12, 12, 'green', 'false')</l>
 <c>            </c>
-<l>            send_data(Socket,'z',Response, [])</l>
-<l>            disp_message (WindowHandle1, 'Response: ' + Response, 'window', 26, 12, 'green', 'false')</l>
+<c>                * Execute thisCommand</c>
+<c>                </c>
+<c>                * Send response</c>
+<l>                Message_idx := Message_idx + 1</l>
+<l>                Response:='halcon_index=' + Message_idx + '#{crawl("Crawl from HALCON");}' + '#halcon_command=' + thisCommand  + '#{print("Hi from HALCON");}\n'</l>
+<l>                send_data(Socket,'z',Response, [])</l>
+<l>                disp_message (WindowHandle1, 'Response: ' + Response, 'window', 26, 12, 'green', 'false')</l>
+<l>             endfor</l>
+<c>                </c>
 <l>        catch (Command)</l>
 <l>            OpenStatus[0] := 0</l>
 <l>        endtry</l>
