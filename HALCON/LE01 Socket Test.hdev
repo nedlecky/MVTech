@@ -37,8 +37,7 @@
 <c>            </c>
 <c>            * Perform vision measurement... Set result in Response</c>
 <l>            Message_idx := Message_idx + 1</l>
-<l>            Response:='JS:halcon_index=' + Message_idx + ';' + 'halcon_command=\'' + Command{0:strlen(Command)-3} + '\';'</l>
-<l>            *Response:='JS:halcon_index=' + Message_idx + ';'</l>
+<l>            Response:='halcon_index=' + Message_idx + '#{crawl("Crawl from HALCON");}' + '#halcon_command=' + Command{0:strlen(Command)-3}  + '#{print("Hi from HALCON");}'</l>
 <c>            </c>
 <l>            send_data(Socket,'z',Response, [])</l>
 <l>            disp_message (WindowHandle1, 'Response: ' + Response, 'window', 26, 12, 'green', 'false')</l>
