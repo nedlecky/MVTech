@@ -33,7 +33,7 @@
 <l>            receive_data (Socket, 'z', Command, From)</l>
 <c>            </c>
 <c>            * If multiple (\n delimited) commands come in piled up we execute in sequence</c>
-<l>            tuple_split(Command,'\n',commandLines)</l>
+<l>            tuple_split(Command,'\r',commandLines)</l>
 <l>            tuple_length(commandLines,nCommands)</l>
 <l>            for Index := 0 to nCommands-1 by 1</l>
 <l>                dev_set_window (WindowHandle1)</l>
@@ -46,7 +46,7 @@
 <c>                </c>
 <c>                * Send response</c>
 <l>                Message_idx := Message_idx + 1</l>
-<l>                Response:='halcon_index=' + Message_idx + '#{crawl("Crawl from HALCON");}' + '#halcon_command=' + thisCommand  + '#{print("Hi from HALCON");}\n'</l>
+<l>                Response:='halcon_index=' + Message_idx + '#{crawl("Crawl from HALCON");}' + '#halcon_command=' + thisCommand  + '#{print("Hi from HALCON");}\r'</l>
 <l>                send_data(Socket,'z',Response, [])</l>
 <l>                disp_message (WindowHandle1, 'Response: ' + Response, 'window', 26, 12, 'green', 'false')</l>
 <l>             endfor</l>
